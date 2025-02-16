@@ -47,4 +47,5 @@ jobs:
         if: matrix.actions.name == 'Unit Tests'
         uses: codecov/codecov-action@v5
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
