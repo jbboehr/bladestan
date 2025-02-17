@@ -33,7 +33,6 @@ final class LaravelViewFunctionMatcher
             && $callLike->name instanceof Name
             && $scope->resolveName($callLike->name) === 'view'
         ) {
-            // TODO: maybe make sure this function is coming from Laravel
             return $this->matchView($callLike, $scope);
         }
 
