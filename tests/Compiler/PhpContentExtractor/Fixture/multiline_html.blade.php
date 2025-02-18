@@ -21,7 +21,7 @@
 /** file: foo.blade.php, line: 4 */
 echo e($foo + 10);
 /** file: foo.blade.php, line: 9 */
-echo $__env->make('included_view', ['foo' => 10, 'bar' => $foo . 'bar'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render();
+echo $__env->make('included_view', ['foo' => 10, 'bar' => $foo . 'bar'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render();
 /** file: foo.blade.php, line: 13 */
 echo e($foo + 20);
 /** file: foo.blade.php, line: 14 */
