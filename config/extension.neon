@@ -28,6 +28,10 @@ services:
 
     - Bladestan\ViewRuleHelper
     - Bladestan\Blade\PhpLineToTemplateLineResolver
+    -
+        class: Bladestan\Collector\BladeCollector
+        tags:
+            - phpstan.collector
     - Bladestan\ErrorReporting\Blade\TemplateErrorsFactory
     - Bladestan\NodeAnalyzer\TemplateFilePathResolver
     - Bladestan\NodeAnalyzer\LaravelViewFunctionMatcher

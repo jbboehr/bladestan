@@ -25,7 +25,10 @@
     "autoload": {
         "psr-4": {
             "Bladestan\\": "src"
-        }
+        },
+        "files": [
+            "config/super-duper-unsafe-hack.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

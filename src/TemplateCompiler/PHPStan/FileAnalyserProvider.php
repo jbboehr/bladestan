@@ -7,6 +7,7 @@ namespace Bladestan\TemplateCompiler\PHPStan;
 use Bladestan\TemplateCompiler\Rules\TemplateRulesRegistry;
 use PhpParser\Node;
 use PHPStan\Analyser\FileAnalyser;
+use PHPStan\Collectors\Registry;
 use PHPStan\DependencyInjection\DerivativeContainerFactory;
 use PHPStan\Rules\Rule;
 
@@ -18,6 +19,7 @@ use PHPStan\Rules\Rule;
 final class FileAnalyserProvider
 {
     private TemplateRulesRegistry|null $templateRulesRegistry = null;
+    private Registry|null $collectorRegistry = null;
 
     private FileAnalyser|null $fileAnalyser = null;
 
@@ -39,6 +41,23 @@ final class FileAnalyserProvider
         $rules = new TemplateRulesRegistry($rules);
 
         $this->templateRulesRegistry = $rules;
+
+        return $rules;
+    }
+
+    public function getCollectors(): Registry
+    {
+        if ($this->collectorRegistry instanceof Registry) {
+            return $this->collectorRegistry;
+        }
+
+        /** @phpstan-ignore phpstanApi.method */
+        $container = $this->derivativeContainerFactory->create([]);
+        /** @var array<Rule<Node>> */
+        $rules = $container->getServicesByTag('phpstan.collector');
+        $rules = new Registry($rules);
+
+        $this->collectorRegistry = $rules;
 
         return $rules;
     }

@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Bladestan\Tests\Rules;
 
+use Bladestan\Collector\BladeCollector;
 use Bladestan\Rules\BladeRule;
 use Iterator;
+use PhpParser\Node;
+use PHPStan\Analyser\Scope;
+use PHPStan\Collectors\Collector;
 use PHPStan\Rules\Rule;
 use PHPStan\Testing\RuleTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -238,6 +242,24 @@ final class BladeRuleTest extends RuleTestCase
     public static function getAdditionalConfigFiles(): array
     {
         return [__DIR__ . '/config/configured_extension.neon'];
+    }
+
+    public function getCollectors(): array
+    {
+        return array_merge(parent::getCollectors(), [
+            new class implements Collector {
+                public function getNodeType(): string
+                {
+                    return Node\Expr\CallLike::class;
+                }
+
+                public function processNode(Node $node, Scope $scope)
+                {
+                    return 'test';
+                }
+            },
+            new BladeCollector(),
+        ]);
     }
 
     /**

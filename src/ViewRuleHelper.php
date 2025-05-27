@@ -14,7 +14,6 @@ use Bladestan\ValueObject\CompiledTemplate;
 use InvalidArgumentException;
 use PhpParser\Node\Expr\CallLike;
 use PHPStan\Analyser\Scope;
-use PHPStan\Collectors\Registry;
 use PHPStan\Rules\IdentifierRuleError;
 
 final class ViewRuleHelper
@@ -30,7 +29,7 @@ final class ViewRuleHelper
 
     /**
      * @throws InvalidArgumentException
-     * @return list<IdentifierRuleError>
+     * @return array{list<IdentifierRuleError>, array}
      */
     public function processNode(
         CallLike $callLike,
@@ -51,22 +50,20 @@ final class ViewRuleHelper
     }
 
     /**
-     * @return list<IdentifierRuleError>
+     * @return array{list<IdentifierRuleError>, array}
      */
     private function processTemplateFilePath(CompiledTemplate $compiledTemplate): array
     {
         $fileAnalyser = $this->fileAnalyserProvider->provide();
         $templateRulesRegistry = $this->fileAnalyserProvider->getRules();
-
-        /** @phpstan-ignore phpstanApi.constructor */
-        $collectorsRegistry = new Registry([]);
+        $collectorRegistry = $this->fileAnalyserProvider->getCollectors();
 
         /** @phpstan-ignore phpstanApi.method */
         $fileAnalyserResult = $fileAnalyser->analyseFile(
             $compiledTemplate->phpFilePath,
             [],
             $templateRulesRegistry,
-            $collectorsRegistry,
+            $collectorRegistry,
             null
         );
 
@@ -75,12 +72,15 @@ final class ViewRuleHelper
 
         $usefulRuleErrors = $this->errorFilter->filterErrors($ruleErrors);
 
-        return $this->templateErrorsFactory->createErrors(
-            $usefulRuleErrors,
-            $compiledTemplate->phpLine,
-            $compiledTemplate->bladeFilePath,
-            $compiledTemplate->phpFileContentsWithLineMap,
-        );
+        return [
+            $this->templateErrorsFactory->createErrors(
+                $usefulRuleErrors,
+                $compiledTemplate->phpLine,
+                $compiledTemplate->bladeFilePath,
+                $compiledTemplate->phpFileContentsWithLineMap,
+            ),
+            $fileAnalyserResult->getCollectedData(),
+        ];
     }
 
     /**

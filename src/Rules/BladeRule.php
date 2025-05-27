@@ -25,6 +25,8 @@ use PHPStan\Rules\Rule;
  */
 final class BladeRule implements Rule
 {
+    public static array $collectedData = [];
+
     public function __construct(
         private readonly BladeViewMethodsMatcher $bladeViewMethodsMatcher,
         private readonly LaravelViewFunctionMatcher $laravelViewFunctionMatcher,
@@ -52,10 +54,10 @@ final class BladeRule implements Rule
         $errors = [];
         foreach ($renderTemplatesWithParameters as $renderTemplateWithParameter) {
             try {
-                $errors = array_merge(
-                    $errors,
-                    $this->viewRuleHelper->processNode($node, $scope, $renderTemplateWithParameter),
-                );
+                [$newErrors, $collectedData] = $this->viewRuleHelper->processNode($node, $scope, $renderTemplateWithParameter);
+                $errors = array_merge($errors, $newErrors);
+                self::$collectedData[] = $collectedData;
+                // BladeCollector::pushCollectedData($node, $collectedData);
             } catch (InvalidArgumentException $invalidArgumentException) {
                 $errors[] = $this->templateErrorsFactory->createError(
                     $invalidArgumentException->getMessage(),
