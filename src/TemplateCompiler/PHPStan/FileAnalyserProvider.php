@@ -9,6 +9,8 @@ use PhpParser\Node;
 use PHPStan\Analyser\FileAnalyser;
 use PHPStan\DependencyInjection\DerivativeContainerFactory;
 use PHPStan\Rules\Rule;
+use PHPStan\Collectors\Collector;
+use PHPStan\Collectors\Registry as CollectorRegistry;
 
 /**
  * This file analyser creates custom PHPStan DI container, based on rich php-parser with parent connection etc.
@@ -19,10 +21,12 @@ final class FileAnalyserProvider
 {
     private TemplateRulesRegistry|null $templateRulesRegistry = null;
 
+    private ?CollectorRegistry $collectorRegistry = null;
+
     private FileAnalyser|null $fileAnalyser = null;
 
     public function __construct(
-        private readonly DerivativeContainerFactory $derivativeContainerFactory
+        private readonly DerivativeContainerFactory $derivativeContainerFactory,
     ) {
     }
 
@@ -41,6 +45,25 @@ final class FileAnalyserProvider
         $this->templateRulesRegistry = $rules;
 
         return $rules;
+    }
+
+    public function getCollectorRegistry(): CollectorRegistry
+    {
+        /** @phpstan-ignore phpstanApi.class */
+        if ($this->collectorRegistry instanceof CollectorRegistry) {
+            return $this->collectorRegistry;
+        }
+
+        /** @phpstan-ignore phpstanApi.method */
+        $container = $this->derivativeContainerFactory->create([]);
+        /** @var array<Collector<Node, never>> $collectors */
+        $collectors = $container->getServicesByTag('phpstan.collector');
+        /** @phpstan-ignore phpstanApi.constructor */
+        $collectorRegistry = new CollectorRegistry($collectors);
+
+        $this->collectorRegistry = $collectorRegistry;
+
+        return $collectorRegistry;
     }
 
     public function provide(): FileAnalyser

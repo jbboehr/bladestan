@@ -57,9 +57,7 @@ final class ViewRuleHelper
     {
         $fileAnalyser = $this->fileAnalyserProvider->provide();
         $templateRulesRegistry = $this->fileAnalyserProvider->getRules();
-
-        /** @phpstan-ignore phpstanApi.constructor */
-        $collectorsRegistry = new Registry([]);
+        $collectorsRegistry = $this->fileAnalyserProvider->getCollectorRegistry();
 
         /** @phpstan-ignore phpstanApi.method */
         $fileAnalyserResult = $fileAnalyser->analyseFile(
