@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bladestan;
 
+use Bladestan\Collector\BladeCollector;
 use Bladestan\Compiler\BladeToPHPCompiler;
 use Bladestan\ErrorReporting\Blade\TemplateErrorsFactory;
 use Bladestan\NodeAnalyzer\TemplateFilePathResolver;
@@ -25,6 +26,7 @@ final class ViewRuleHelper
         private readonly BladeToPHPCompiler $bladeToPhpCompiler,
         private readonly TemplateFilePathResolver $templateFilePathResolver,
         private readonly ErrorFilter $errorFilter,
+        private readonly BladeCollector $bladeCollector
     ) {
     }
 
@@ -70,6 +72,11 @@ final class ViewRuleHelper
 
         /** @phpstan-ignore phpstanApi.method */
         $ruleErrors = $fileAnalyserResult->getErrors();
+
+        $this->bladeCollector->pushCollectedData(
+            /** @phpstan-ignore-next-line phpstanApi.method */
+            $fileAnalyserResult->getCollectedData()
+        );
 
         $usefulRuleErrors = $this->errorFilter->filterErrors($ruleErrors);
 
