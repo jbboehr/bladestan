@@ -35,6 +35,11 @@ final class BladeCollectorProxyRule implements Rule
 
         /** @phpstan-ignore-next-line phpstanApi.method */
         foreach ($this->ruleRegistry->getRules($nodeType) as $rule) {
+            if ($rule instanceof self) {
+                // don't blow the stack
+                continue;
+            }
+
             $errors = array_merge(
                 $rule->processNode($collectedData, $scope),
                 $errors,

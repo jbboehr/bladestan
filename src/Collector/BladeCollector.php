@@ -7,10 +7,12 @@ namespace Bladestan\Collector;
 use PhpParser\Node;
 use PhpParser\Node\Expr\CallLike;
 use PHPStan\Analyser\Scope;
+use PHPStan\Collectors\CollectedData;
 use PHPStan\Collectors\Collector;
 
 /**
  * @implements Collector<CallLike, array<mixed>>
+ * @phpstan-import-type CollectorData from CollectedData
  */
 final class BladeCollector implements Collector
 {
@@ -34,7 +36,7 @@ final class BladeCollector implements Collector
     }
 
     /**
-     * @param array<mixed> $collectedData
+     * @phpstan-param CollectorData $collectedData
      */
     public function pushCollectedData(array $collectedData): void
     {
