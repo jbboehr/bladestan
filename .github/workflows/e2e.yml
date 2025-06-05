@@ -4,7 +4,8 @@ on:
     pull_request: null
     push:
         branches:
-            - "main"
+            - main
+            - master
 
 jobs:
     laravel_test:
