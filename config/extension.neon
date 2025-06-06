@@ -38,6 +38,7 @@ services:
     - Bladestan\NodeAnalyzer\CompactFunctionCallParameterResolver
     - Bladestan\NodeAnalyzer\MagicViewWithCallParameterResolver
     - Bladestan\NodeAnalyzer\ClassPropertiesResolver
+    - Bladestan\NodeAnalyzer\ViewComposerAnalyzer
     - Bladestan\NodeAnalyzer\ValueResolver
     - Bladestan\Compiler\BladeToPHPCompiler
     - Bladestan\PhpParser\NodeVisitor\BladeLineNumberNodeVisitor

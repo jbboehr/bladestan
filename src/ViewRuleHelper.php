@@ -7,6 +7,7 @@ namespace Bladestan;
 use Bladestan\Compiler\BladeToPHPCompiler;
 use Bladestan\ErrorReporting\Blade\TemplateErrorsFactory;
 use Bladestan\NodeAnalyzer\TemplateFilePathResolver;
+use Bladestan\NodeAnalyzer\ViewComposerAnalyzer;
 use Bladestan\TemplateCompiler\ErrorFilter;
 use Bladestan\TemplateCompiler\PHPStan\FileAnalyserProvider;
 use Bladestan\TemplateCompiler\ValueObject\RenderTemplateWithParameters;
@@ -25,6 +26,7 @@ final class ViewRuleHelper
         private readonly BladeToPHPCompiler $bladeToPhpCompiler,
         private readonly TemplateFilePathResolver $templateFilePathResolver,
         private readonly ErrorFilter $errorFilter,
+        private readonly ViewComposerAnalyzer $viewComposerAnalyzer,
     ) {
     }
 
@@ -110,6 +112,8 @@ final class ViewRuleHelper
 
         $tmpFilePath = sys_get_temp_dir() . '/' . md5($filePath) . '-blade-compiled.php';
         file_put_contents($tmpFilePath, $phpFileContents);
+
+        $this->viewComposerAnalyzer->analyzeFor($renderTemplateWithParameters->templateName);
 
         return new CompiledTemplate($filePath, $tmpFilePath, $phpFileContentsWithLineMap, $phpLine);
     }
