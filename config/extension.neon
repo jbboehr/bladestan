@@ -1,9 +1,16 @@
 includes:
     - template-compiler/services.neon
 
+parametersSchema:
+    bladestan: structure([
+        unusedViews: bool()
+    ])
+
 parameters:
     bootstrapFiles:
         - ../bootstrap.php
+    bladestan:
+        unusedViews: false
 
 rules:
     - Bladestan\Rules\BladeRule
@@ -42,8 +49,16 @@ services:
     - Bladestan\Compiler\BladeToPHPCompiler
     - Bladestan\PhpParser\NodeVisitor\BladeLineNumberNodeVisitor
     - Bladestan\PhpParser\ArrayStringToArrayConverter
+    - Bladestan\Rules\IncludedViewCollector
+    - Bladestan\Rules\UnusedViewRule
 
     -
         class: Bladestan\PhpParser\NodeVisitor\ViewFunctionArgumentsNodeVisitor
         tags:
             - phpstan.parser.richParserNodeVisitor
+
+conditionalTags:
+    Bladestan\Rules\IncludedViewCollector:
+        phpstan.collector: %bladestan.unusedViews%
+    Bladestan\Rules\UnusedViewRule:
+        phpstan.rules.rule: %bladestan.unusedViews%
