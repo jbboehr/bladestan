@@ -19,5 +19,11 @@ composer config repositories.0 '{ "type": "path", "url": "../bladestan", "option
 # No version information with "type":"path"
 composer require --dev --optimize-autoloader "tomasvotruba/bladestan:*"
 
+# the view path is not being detected correctly ...
+#cat <<EOF >> ../mailbook/phpstan.neon
+#    bladestan:
+#       unusedViews: true
+#EOF
+
 echo "Test Mailbook project"
 vendor/bin/phpstan analyse --error-format=blade

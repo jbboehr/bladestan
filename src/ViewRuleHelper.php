@@ -30,7 +30,7 @@ final class ViewRuleHelper
 
     /**
      * @throws InvalidArgumentException
-     * @return list<IdentifierRuleError>
+     * @return array{list<IdentifierRuleError>, list<string>}
      */
     public function processNode(
         CallLike $callLike,
@@ -44,14 +44,19 @@ final class ViewRuleHelper
         );
 
         if (! $compiledTemplate instanceof CompiledTemplate) {
-            return [];
+            return [[], []];
         }
 
         return $this->processTemplateFilePath($compiledTemplate);
     }
 
+    public static function isLikelyCompiledBladeTemplate(string $filename): bool
+    {
+        return str_ends_with($filename, '-blade-compiled.php');
+    }
+
     /**
-     * @return list<IdentifierRuleError>
+     * @return array{list<IdentifierRuleError>, list<string>}
      */
     private function processTemplateFilePath(CompiledTemplate $compiledTemplate): array
     {
@@ -75,12 +80,15 @@ final class ViewRuleHelper
 
         $usefulRuleErrors = $this->errorFilter->filterErrors($ruleErrors);
 
-        return $this->templateErrorsFactory->createErrors(
-            $usefulRuleErrors,
-            $compiledTemplate->phpLine,
-            $compiledTemplate->bladeFilePath,
-            $compiledTemplate->phpFileContentsWithLineMap,
-        );
+        return [
+            $this->templateErrorsFactory->createErrors(
+                $usefulRuleErrors,
+                $compiledTemplate->phpLine,
+                $compiledTemplate->bladeFilePath,
+                $compiledTemplate->phpFileContentsWithLineMap,
+            ),
+            $compiledTemplate->includedViewNames,
+        ];
     }
 
     /**
@@ -111,6 +119,12 @@ final class ViewRuleHelper
         $tmpFilePath = sys_get_temp_dir() . '/' . md5($filePath) . '-blade-compiled.php';
         file_put_contents($tmpFilePath, $phpFileContents);
 
-        return new CompiledTemplate($filePath, $tmpFilePath, $phpFileContentsWithLineMap, $phpLine);
+        return new CompiledTemplate(
+            $filePath,
+            $tmpFilePath,
+            $phpFileContentsWithLineMap,
+            $phpLine,
+            array_merge([$renderTemplateWithParameters->templateName], $phpFileContentsWithLineMap->includedViewNames)
+        );
     }
 }

@@ -124,18 +124,19 @@ final class BladeToPHPCompiler
         $variablesAndTypes = $this->getViewData($viewName)
             + $parametersArray;
 
-        $phpCode = "<?php\n\n" . $this->inlineInclude(
+        [$phpCode, $includedViewNames] = $this->inlineInclude(
             $resolvedTemplateFilePath,
             $fileContents,
             array_keys($variablesAndTypes)
         );
+        $phpCode = "<?php\n\n" . $phpCode;
         $phpCode = $this->resolveComponents($phpCode);
         $phpCode = $this->bubbleUpImports($phpCode);
 
         $phpCode = $this->decoratePhpContent($phpCode, $variablesAndTypes);
 
         $phpLinesToTemplateLines = $this->phpLineToTemplateLineResolver->resolve($phpCode);
-        return new PhpFileContentsWithLineMap($phpCode, $phpLinesToTemplateLines, $this->errors);
+        return new PhpFileContentsWithLineMap($phpCode, $phpLinesToTemplateLines, $this->errors, $includedViewNames);
     }
 
     /**
@@ -187,12 +188,15 @@ final class BladeToPHPCompiler
 
     /**
      * @param array<string> $allVariablesList
+     * @return array{string, list<string>}
      */
-    private function inlineInclude(string $filePath, string $fileContents, array $allVariablesList): string
+    private function inlineInclude(string $filePath, string $fileContents, array $allVariablesList): array
     {
         // Precompile contents to add template file name and line numbers
         $fileContents = $this->fileNameAndLineNumberAddingPreCompiler
             ->completeLineCommentsToBladeContents($filePath, $fileContents);
+
+        $includedViewNames = [];
 
         // Extract PHP content from HTML and PHP mixed content
         $rawPhpContent = '';
@@ -217,6 +221,8 @@ final class BladeToPHPCompiler
 
         // Recursively fetch and compile includes
         foreach ($this->getIncludes($rawPhpContent) as $include) {
+            $includedViewNames[] = $include->includedViewName;
+
             try {
                 /** @throws InvalidArgumentException */
                 $includedFilePath = $this->viewFactory->getFinder()
@@ -229,11 +235,12 @@ final class BladeToPHPCompiler
             }
 
             $includedContent = $include->preprocessTemplate($includedContent, array_keys($this->shared));
-            $includedContent = $this->inlineInclude(
+            [$includedContent, $extraIncludedViewNames] = $this->inlineInclude(
                 $includedFilePath,
                 $includedContent,
                 $include->getInnerScopeVariableNames($allVariablesList)
             );
+            $includedViewNames = array_merge($includedViewNames, $extraIncludedViewNames);
 
             $rawPhpContent = str_replace(
                 $include->rawPhpContent,
@@ -242,7 +249,7 @@ final class BladeToPHPCompiler
             );
         }
 
-        return $rawPhpContent;
+        return [$rawPhpContent, $includedViewNames];
     }
 
     private function bubbleUpImports(string $rawPhpContent): string

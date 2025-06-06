@@ -31,6 +31,7 @@ final class BladeRule implements Rule
         private readonly MailablesContentMatcher $mailablesContentMatcher,
         private readonly ViewRuleHelper $viewRuleHelper,
         private readonly TemplateErrorsFactory $templateErrorsFactory,
+        private readonly IncludedViewCollector $templateUseCollector,
     ) {
     }
 
@@ -52,10 +53,13 @@ final class BladeRule implements Rule
         $errors = [];
         foreach ($renderTemplatesWithParameters as $renderTemplateWithParameter) {
             try {
-                $errors = array_merge(
-                    $errors,
-                    $this->viewRuleHelper->processNode($node, $scope, $renderTemplateWithParameter),
+                [$moreErrors, $includedViewNames] = $this->viewRuleHelper->processNode(
+                    $node,
+                    $scope,
+                    $renderTemplateWithParameter
                 );
+                $errors = array_merge($errors, $moreErrors);
+                $this->templateUseCollector->push($includedViewNames);
             } catch (InvalidArgumentException $invalidArgumentException) {
                 $errors[] = $this->templateErrorsFactory->createError(
                     $invalidArgumentException->getMessage(),
