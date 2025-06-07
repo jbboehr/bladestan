@@ -15,7 +15,7 @@ class TestServiceProvider extends ServiceProvider
         $viewFactory->getFinder()
             ->addLocation(__DIR__ . '/skeleton/resources/views');
         $viewFactory->composer('*', SampleViewComposer::class);
-        $viewFactory->composer('compose', AnotherSampleViewComposer::class);
+        $viewFactory->composer('*', AnotherSampleViewComposer::class);
         $this->loadViewsFrom(__DIR__ . '/skeleton/resources/namespace/Test', 'Test');
     }
 }

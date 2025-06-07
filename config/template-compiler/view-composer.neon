@@ -1,0 +1,3 @@
+services:
+  - class: Bladestan\NodeAnalyzer\ViewComposerHackeyHackeyVisitor
+    tags: ["phpstan.parser.richParserNodeVisitor"]

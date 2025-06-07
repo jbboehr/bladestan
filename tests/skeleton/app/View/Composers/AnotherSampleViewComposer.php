@@ -2,12 +2,19 @@
 
 namespace App\View\Composers;
 
-use Illuminate\View\View;
+use Illuminate\Contracts\View\View;
 
 final class AnotherSampleViewComposer
 {
     public function compose(View $view): void
     {
-        $view->with('count', 1);
+        if (random_int(0, 100) > 50) {
+            $view->with('count', 3);
+            if (true) {
+                $view->with('foo', 'bar');
+            }
+        } else {
+            $view->with('count', 4);
+        }
     }
 }
