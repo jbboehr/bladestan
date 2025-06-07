@@ -17,6 +17,11 @@ use PhpParser\Node\Expr\CallLike;
 use PHPStan\Analyser\Scope;
 use PHPStan\Collectors\Registry;
 use PHPStan\Rules\IdentifierRuleError;
+use PHPStan\Type\MixedType;
+use PHPStan\Type\NeverType;
+use PHPStan\Type\NullType;
+use PHPStan\Type\Type;
+use PHPStan\Type\TypeCombinator;
 
 final class ViewRuleHelper
 {
@@ -101,11 +106,13 @@ final class ViewRuleHelper
             return null;
         }
 
+        $extraVarType = $this->viewComposerAnalyzer->analyzeFor($renderTemplateWithParameters->templateName);
+
         $phpFileContentsWithLineMap = $this->bladeToPhpCompiler->compileContent(
             $resolvedTemplateFilePath,
             $renderTemplateWithParameters->templateName,
             $fileContents,
-            $renderTemplateWithParameters->parametersArray
+            self::mergeParameters($renderTemplateWithParameters->parametersArray, $extraVarType),
         );
 
         $phpFileContents = $phpFileContentsWithLineMap->phpFileContents;
@@ -113,8 +120,44 @@ final class ViewRuleHelper
         $tmpFilePath = sys_get_temp_dir() . '/' . md5($filePath) . '-blade-compiled.php';
         file_put_contents($tmpFilePath, $phpFileContents);
 
-        $this->viewComposerAnalyzer->analyzeFor($renderTemplateWithParameters->templateName);
+        return new CompiledTemplate(
+            $filePath,
+            $tmpFilePath,
+            $phpFileContentsWithLineMap,
+            $phpLine,
+            $extraVarType,
+        );
+    }
 
-        return new CompiledTemplate($filePath, $tmpFilePath, $phpFileContentsWithLineMap, $phpLine);
+    /**
+     * @param array<string, Type> $parametersArray
+     * @return array<string, Type>
+     */
+    private static function mergeParameters(array $parametersArray, Type $extraVarType)
+    {
+        if ($extraVarType instanceof NeverType || $extraVarType instanceof MixedType) {
+            return $parametersArray;
+        }
+
+        foreach ($extraVarType->getConstantArrays() as $constantArray) {
+            $c = count($constantArray->getKeyTypes());
+
+            for ($i = 0; $i < $c; $i++) {
+                $keyType = $constantArray->getKeyTypes()[$i];
+                $valueType = $constantArray->getValueTypes()[$i];
+
+                if (count($keyType->getConstantStrings()) === 1) {
+                    $type = $valueType;
+
+                    if ($constantArray->isOptionalKey($i)) {
+                        $type = TypeCombinator::union($type, new NullType());
+                    }
+
+                    $parametersArray[$keyType->getConstantStrings()[0]->getValue()] = $type;
+                }
+            }
+        }
+
+        return $parametersArray;
     }
 }

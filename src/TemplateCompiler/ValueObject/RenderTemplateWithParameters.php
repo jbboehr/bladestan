@@ -8,9 +8,11 @@ use PHPStan\Type\Type;
 
 final class RenderTemplateWithParameters
 {
+    /**
+     * @param array<string, Type> $parametersArray
+     */
     public function __construct(
         public readonly string $templateName,
-        /** @var array<string, Type> */
         public readonly array $parametersArray
     ) {
     }

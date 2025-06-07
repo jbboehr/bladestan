@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bladestan\NodeAnalyzer;
 
+use Illuminate\Events\Dispatcher;
 use Illuminate\View\Factory;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
@@ -14,10 +15,11 @@ use PHPStan\DependencyInjection\DerivativeContainerFactory;
 use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\DirectRegistry;
 use PHPStan\Rules\Rule;
+use PHPStan\Type\Constant\ConstantArrayTypeBuilder;
 use PHPStan\Type\NeverType;
 use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
-use PHPStan\Type\VerbosityLevel;
+use PHPStan\Type\UnionType;
 
 final class ViewComposerAnalyzer
 {
@@ -27,22 +29,28 @@ final class ViewComposerAnalyzer
     ) {
     }
 
-    public function analyzeFor(string $viewName)
+    public function analyzeFor(string $viewName): Type
     {
         $viewFactory = resolve(Factory::class);
         $eventDispatcher = $viewFactory->getDispatcher();
 
+        if (! $eventDispatcher instanceof Dispatcher) {
+            return new NeverType();
+        }
+
         try {
+            /** @var array<string, list<callable>> $wildcards */
             $wildcards = (new \ReflectionProperty($eventDispatcher, 'wildcards'))->getValue($eventDispatcher);
+            /** @var array<string, list<callable>> $listeners */
             $listeners = (new \ReflectionProperty($eventDispatcher, 'listeners'))->getValue($eventDispatcher);
         } catch (\ReflectionException $e) {
-            return;
+            return new NeverType();
         }
 
         $aggregateType = new NeverType();
 
         foreach ($listeners as $eventName => $items) {
-            if (!str_starts_with($eventName, 'composing: ')) {
+            if (! str_starts_with($eventName, 'composing: ')) {
                 continue;
             }
 
@@ -51,7 +59,7 @@ final class ViewComposerAnalyzer
         }
 
         foreach ($wildcards as $eventName => $items) {
-            if (!str_starts_with($eventName, 'composing: ')) {
+            if (! str_starts_with($eventName, 'composing: ')) {
                 continue;
             }
 
@@ -59,15 +67,15 @@ final class ViewComposerAnalyzer
             $aggregateType = TypeCombinator::union($type, $aggregateType);
         }
 
-        // FUCK Y'ALL ALL Y'ALL
-        dump($aggregateType->describe(VerbosityLevel::precise()));
+        return self::flatten($aggregateType);
     }
 
     /**
      * @param list<callable> $listeners
      */
-    private function processListeners(string $pattern, array $listeners)
+    private function processListeners(string $pattern, array $listeners): Type
     {
+        /** @var list<array{class-string, string}> $viewComposerClasses */
         $viewComposerClasses = [];
 
         foreach ($listeners as $listener) {
@@ -75,17 +83,23 @@ final class ViewComposerAnalyzer
                 $r = new \ReflectionFunction($listener);
                 $vars = $r->getClosureUsedVariables();
 
-                if (!empty($vars['callback'])) {
+                if (! empty($vars['callback']) && $vars['callback'] instanceof \Closure) {
                     $r = new \ReflectionFunction($vars['callback']);
                     $vars = $r->getClosureUsedVariables();
                 }
 
-                if (!empty($vars['class']) && !empty($vars['method'])) {
-                    $viewComposerClasses[] = [$vars['class'], $vars['method']];
+                if (! empty($vars['class']) && ! empty($vars['method'])) {
+                    ['class' => $class, 'method' => $method] = $vars;
+
+                    if (is_string($class) && is_string($method) && method_exists($class, $method)) {
+                        /** @var class-string $class */
+                        $viewComposerClasses[] = [$class, $method];
+                    }
                 }
             }
         }
 
+        /** @phpstan-ignore-next-line phpstanApi.method */
         $container = $this->derivativeContainerFactory->create(
             [__DIR__ . '/../../config/template-compiler/view-composer.neon'],
         );
@@ -93,8 +107,10 @@ final class ViewComposerAnalyzer
         /** @phpstan-ignore phpstanApi.classConstant */
         $fileAnalyzer = $container->getByType(FileAnalyser::class);
 
-        $finalRule = new class implements Rule
-        {
+        $finalRule = new /**
+         * @implements Rule<FuncCall>
+         */
+        class() implements Rule {
             public ?Type $type = null;
 
             public function getNodeType(): string
@@ -104,11 +120,15 @@ final class ViewComposerAnalyzer
 
             public function processNode(Node $node, Scope $scope): array
             {
+                if (! ($node->name instanceof Node\Name)) {
+                    return [];
+                }
+
                 if ($node->name->name !== ViewComposerHackeyHackeyVisitor::FAKE_FUNC_NAME) {
                     return [];
-                };
+                }
 
-                $this->type = $scope->getType($node->args[0]->value);
+                $this->type = $scope->getType($node->getArgs()[0]->value);
 
                 return [];
             }
@@ -119,13 +139,18 @@ final class ViewComposerAnalyzer
         foreach ($viewComposerClasses as [$class, $method]) {
             $reflection = $this->reflectionProvider->getClass($class);
 
+            if ($reflection->getFileName() === null) {
+                continue;
+            }
+
+            /** @phpstan-ignore-next-line phpstanApi.method */
             $fileAnalyzer->analyseFile(
                 $reflection->getFileName(),
                 [],
+                /** @phpstan-ignore-next-line phpstanApi.constructor */
                 new DirectRegistry([]),
-                new Registry([
-                   $finalRule,
-                ]),
+                /** @phpstan-ignore-next-line phpstanApi.constructor */
+                new Registry([$finalRule]),
                 static function () {}
             );
 
@@ -137,5 +162,35 @@ final class ViewComposerAnalyzer
         }
 
         return $aggregateType;
+    }
+
+    private static function flatten(Type $unionType): Type
+    {
+        if (! ($unionType instanceof UnionType)) {
+            return $unionType;
+        }
+
+        $builder = ConstantArrayTypeBuilder::createEmpty();
+
+        foreach ($unionType->getTypes() as $type) {
+            $constantArrayType = $type->getConstantArrays();
+
+            if (count($constantArrayType) !== 1) {
+                continue;
+            }
+
+            $constantArrayType = $constantArrayType[0];
+
+            $c = count($constantArrayType->getKeyTypes());
+
+            for ($i = 0; $i < $c; $i++) {
+                $keyType = $constantArrayType->getKeyTypes()[$i];
+                $valueType = $constantArrayType->getValueTypes()[$i];
+
+                $builder->setOffsetValueType($keyType, $valueType, true);
+            }
+        }
+
+        return $builder->getArray();
     }
 }

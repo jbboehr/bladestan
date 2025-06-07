@@ -10,8 +10,9 @@ final class AnotherSampleViewComposer
     {
         if (random_int(0, 100) > 50) {
             $view->with('count', 3);
+            /** @phpstan-ignore-next-line if.alwaysTrue */
             if (true) {
-                $view->with('foo', 'bar');
+                $view->with('super_foo', 'super_bar');
             }
         } else {
             $view->with('count', 4);

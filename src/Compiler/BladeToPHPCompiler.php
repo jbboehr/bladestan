@@ -174,16 +174,16 @@ final class BladeToPHPCompiler
     private function getViewDataRaw(string $viewName): array
     {
         return [];
-//        $viewDataCollector = new ViewDataCollector($viewName, $this->viewFactory);
-//        try {
-//            /** @throws Throwable */
-//            $this->viewFactory->callComposer($viewDataCollector);
-//        } catch (Throwable $throwable) {
-//            $this->errors[] = [$throwable->getMessage(), 'bladestan.data'];
-//            return [];
-//        }
-//
-//        return $viewDataCollector->getData();
+        //        $viewDataCollector = new ViewDataCollector($viewName, $this->viewFactory);
+        //        try {
+        //            /** @throws Throwable */
+        //            $this->viewFactory->callComposer($viewDataCollector);
+        //        } catch (Throwable $throwable) {
+        //            $this->errors[] = [$throwable->getMessage(), 'bladestan.data'];
+        //            return [];
+        //        }
+        //
+        //        return $viewDataCollector->getData();
     }
 
     /**
